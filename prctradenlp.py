@@ -197,6 +197,8 @@ def getarea(straddr):
         return None
 
 def getcitybyProvArea(prov,straddr):
+#    if prov in zhixia:
+#        prov+=u"市"
     if PCA[prov].has_key(straddr):
         return PCA[prov][straddr]
     elif PCA[prov].has_key(straddr+u"区"):
@@ -207,9 +209,15 @@ def getcitybyProvArea(prov,straddr):
 def filterdupaddress(straddr):
     dup=0
     for dup in range(len(straddr)/2,0,-1):
-        if straddr[:dup] in straddr[dup:dup+len(straddr[:dup])]:
+        if dup > 3:
+            if straddr[:dup] in straddr[dup:]:
 #            print dup
-            break
+                break
+        else:
+            if straddr[:dup] in straddr[dup:dup+len(straddr[:dup])]:
+#            print dup
+                break
+
     if dup > 1:
 #        dupsplit=straddr.rsplit(straddr[:dup-1],1)
         return straddr[dup:]
@@ -409,7 +417,7 @@ def procaddress(content):
                     city=getcity(addrs[posc])
                     if city!=None:
                         break
-            if city==None:
+            if city==None or findprovincebycity(city)!=addr:
                 city=u""
                 content[13]+=u"找不到市信息,"
             else:
@@ -420,7 +428,7 @@ def procaddress(content):
                         area=getarea(addrs[posa])
                         if area!=None:
                             break
-                if area==None:
+                if area==None or getcitybyProvArea(addr,area)!= city:
                     area=u""
                     content[13]+=u"找不到区信息"
                 else:
