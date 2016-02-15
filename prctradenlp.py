@@ -4,7 +4,8 @@ import csv, codecs, cStringIO
 from snownlp import SnowNLP
 import argparse
 import re
-p=re.compile("[\s+\.\!\/\|_,$%^*()+\"\']+|[+——！，。？、~@#￥%……&*（）＠]+".decode("utf8"))
+#p=re.compile("[\s+\.\!\/\|\,_,$%^*()+\"\']+|[+——！，。？、~@#￥%……&*（）＠]+".decode("utf8"))
+p=re.compile("[\s+\.\!\|\,,$%^*+\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
 paddress=re.compile("-".decode("utf8"))
 parser = argparse.ArgumentParser()
 parser.add_argument("input_csv")
@@ -184,7 +185,8 @@ def getcity(straddr):
     else:
         return None
 
-def getarea(straddr):
+def getarea(straddrfilter):
+    straddr=filterotherarea(straddrfilter)
     if straddr in areas :
         return straddr
     elif straddr + u"市" in areas:
@@ -219,8 +221,9 @@ def filterdupaddress(straddr):
                 break
 
     if dup > 1:
-#        dupsplit=straddr.rsplit(straddr[:dup-1],1)
-        return straddr[dup:]
+        dupsplit=straddr.rsplit(straddr[:dup],1)
+        return dupsplit[0]+dupsplit[1]
+#        return straddr[dup:]
     else:
         return straddr
 
@@ -228,12 +231,13 @@ def dynareduce(address):
     addwords=SnowNLP(address).words
     for pos in range(0,len(addwords)-1):
         for pos1 in range(pos+1,len(addwords)-1):
-            if addwords[pos] == addwords[pos1] and not addwords[pos].isdigit:
+            if addwords[pos] == addwords[pos1] and not addwords[pos].isdigit():
                 addwords[pos1]=u""
+                break
     result=u""
     for words in addwords:
         result+=words
-    return filterdupaddress(result)
+    return result
 
 def filterotherarea(straddr):
     if u"其它区" in straddr:
@@ -241,6 +245,8 @@ def filterotherarea(straddr):
         return straddr.replace(u"其它区",u"")
     elif u"市辖区" in straddr:
         return straddr.replace(u"市辖区",u"")
+    elif u"墉桥区" in straddr:
+        return straddr.replace(u"墉桥区",u"埇桥区")
     elif u"璧山区" in straddr:
         return straddr.replace(u"璧山区",u"璧山县")
     elif u"高陵区" in straddr:
@@ -276,15 +282,24 @@ def procaddress(content):
     area=None
     fulladdr=u""
     if len(content)>7:
+        content.append(content[6])
+        Detailaddress=content[6]
+        content.append(u"")
         if content[3]==u"-":
             content[3]=u""
             content[4]=u""
             content[5]=u""
-            content[6]=paddress.sub("",content[6])
-        content.append(content[6])
-        Detailaddress=content[6]
+            Detailaddress=paddress.sub("",content[6])
+        else:
+            if Detailaddress.startswith(content[3]):
+                Detailaddress=Detailaddress.replace(content[3],"",1)
+            if Detailaddress.startswith(content[4]):
+                Detailaddress=Detailaddress.replace(content[4],"",1)
+            if Detailaddress.startswith(content[5]):
+                Detailaddress=Detailaddress.replace(content[5],"",1)
+
         content[6]=Detailaddress
-        content.append(u"")
+
     else:
 #        print content
         content.append(u"数据不完整")
@@ -356,7 +371,10 @@ def procaddress(content):
                         content[6]+=c
             elif addrs[0] in provinces:
                 content[6]=addrs[0]+u"省"
-                for c in addrs[1:]:
+                pos=1
+                if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划'):
+                    pos+=1
+                for c in addrs[pos:]:
                     if not content[6].endswith(c):
                         content[6]+=c
             elif addrs[0] in zhixiashi:
@@ -486,7 +504,7 @@ allphones=[]
 for i in open(args.history):
     allphones.append(i[0:11])
 baby8=[]
-for i in open("baby8.txt"):
+for i in open("baby8uniq.txt"):
     baby8.append(i[0:11])
 
 #sphone8=set(phone8)
