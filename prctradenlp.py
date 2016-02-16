@@ -201,10 +201,12 @@ def getarea(straddrfilter):
 def getcitybyProvArea(prov,straddr):
 #    if prov in zhixia:
 #        prov+=u"市"
-    if PCA[prov].has_key(straddr):
-        return PCA[prov][straddr]
-    elif PCA[prov].has_key(straddr+u"区"):
-        return PCA[prov][straddr+u"区"]
+    if PCA[prov].has_key(getarea(straddr)):
+        return PCA[prov][getarea(straddr)]
+#    elif PCA[prov].has_key(straddr+u"区"):
+#        return PCA[prov][straddr+u"区"]
+#    elif PCA[prov].has_key(straddr+u"市"):
+#        return PCA[prov][straddr+u"市"]
     else:
         return None
 
@@ -237,7 +239,16 @@ def dynareduce(address):
     result=u""
     for words in addwords:
         result+=words
-    return result
+    return filterdupaddress(result)
+
+def setdetail(prov,city,area,detail):
+    baredetail=detail.replace(prov,u"").replace(city,u"").replace(area,u"")
+    if prov in zhixia:
+        return city+area+baredetail
+    elif city==area:
+        return prov+city+baredetail
+    else:
+        return prov+city+area+baredetail
 
 def filterotherarea(straddr):
     if u"其它区" in straddr:
@@ -300,6 +311,7 @@ def procaddress(content):
 
         content[6]=Detailaddress
 
+
     else:
 #        print content
         content.append(u"数据不完整")
@@ -314,8 +326,23 @@ def procaddress(content):
         city=getcity(content[4])
     if content[5]!='': #有详细地址字段
         area=getarea(content[5])
+
     if addr!=None and city!=None and area!=None:
         content[3]=addr
+        content[4]=city
+        content[5]=area
+        if content[6].startswith(addr) and city in content[6] and area in content[6]:
+            fulladdr=content[6]
+        elif area in content[6] and city in content[6]:
+            fulladdr=addr+content[6]
+        elif area in content[6]:
+            fulladdr=addr+area+content[6]
+        else:
+            if addr in zhixia:
+                fulladdr=city+area+content[6]
+            else:
+                fulladdr=addr+city+area+content[6]
+        content[6]=fulladdr
         area=filterotherarea(area)
         if city == u"":
             if addr in zhixia:
@@ -383,7 +410,10 @@ def procaddress(content):
                     if not content[6].endswith(c):
                         content[6]+=c
             else:
-                addrfull=content[3]
+                if content[3] in zhixia:
+                    addrfull=u""
+                else:
+                    addrfull=content[3]
 #                    if content[5] == u"其它区" or content[5]==u"市辖区":
                 content[5] = area
                 for contents in content[4:7]:
@@ -393,15 +423,23 @@ def procaddress(content):
             content[6] = dynareduce(filterotherarea(content[6]))
         else:#內容過短
 #            address_status=False
-            content[13]=u"详细地址太短"
+            content[13]+=u"详细地址太短"
     else:#没有详细地址字段，需拆分省市区
-        posp=0
-        posc=1
-        posa=2
-#        content[13]+=u"省市区信息不对,"
-        fulladdr=content[6]
-#        for contents in content[3:]:
+        if addr!=None:
+            fulladdr+=addr
+        if city!=None:
+            fulladdr+=city
+        if area!=None:
+            fulladdr+=area
+        fulladdr+=content[6]
+#        fulladdr=dynareduce(content[3]+content[4]+content[5]+content[6])
         content[6]=fulladdr
+        posp=0
+        posc=0
+        posa=0
+#        content[13]+=u"省市区信息不对,"
+#        for contents in content[3:]:
+#        content[6]=fulladdr
         addrs=SnowNLP(fulladdr).words
         if addr==None:
             addr=getprovince(content[3])
@@ -421,15 +459,22 @@ def procaddress(content):
             addr=u""
             content[13]+=u"找不到省信息,"
         else :
-
+            if addr in zhixia:
+                content[6]=u""
+            else:
+                content[6]=addr
             if city==None and content[4]!=u"":
                 city=getcity(content[4])
             if city==None and content[5]!=u"":
                 city=getcity(content[5])
             if city==None and content[4]!=u"":
                 city=getcitybyProvArea(addr,content[4])
+                if city!=None:
+                    area=getarea(content[4])
             if city==None and content[5]!=u"":
                 city=getcitybyProvArea(addr,content[5])
+                if city!=None:
+                    area=getarea(content[5])
             if city==None:
                 for posc in range(posp,len(addrs)-1):
                     city=getcity(addrs[posc])
@@ -439,6 +484,7 @@ def procaddress(content):
                 city=u""
                 content[13]+=u"找不到市信息,"
             else:
+                content[6]+=city
                 if area ==None and content[5]!=u"":
                     area=getarea(content[5])
                 if area==None:
@@ -448,20 +494,28 @@ def procaddress(content):
                             break
                 if area==None or getcitybyProvArea(addr,area)!= city:
                     area=u""
+                    posa=1
                     content[13]+=u"找不到区信息"
                 else:
+                    content[6]+=area
                     if city==u"":
                         city=area
+                if posa > 0:
+                    posa+=1
+                for detail in addrs[posa:]:
+                    content[6]+=detail
         content[3]=addr
         content[4]=city
         content[5]=area
-        content[6]=dynareduce(filterotherarea(fulladdr))
+        content[6]=dynareduce(filterotherarea(content[6]))
+
     for pos in range(0,len(content)-1):
         if content[pos]==None:
             content[pos]=u""
+    content[6]=setdetail(content[3],content[4],content[5],content[6])
 
     if isfuzzyend(content[6]):
-        content[13]=u"模糊字结尾"
+        content[13]+=u"模糊字结尾"
 #        address_status = False
 
     return content
@@ -503,9 +557,9 @@ with open(args.input_csv, 'rb') as f:
 allphones=[]
 for i in open(args.history):
     allphones.append(i[0:11])
-baby8=[]
-for i in open("baby8uniq.txt"):
-    baby8.append(i[0:11])
+#baby8=[]
+#for i in open("baby8uniq.txt"):
+#    baby8.append(i[0:11])
 
 #sphone8=set(phone8)
 #sphone18=set(phone18)
@@ -515,14 +569,9 @@ allsets=set(allphones)
 setphone18w=set(phone18w)
 setphone8w=set(phone8w)
 allsetw=set(phone8w) | setphone18w
-crosssetw= set(phone8w) & setphone18w
-crossset=allsets & allsetw
-valueset=allsetw - crossset
+cs=allsetw & allsets
+vs=allsetw - cs
 
-sbaby8=set(baby8)
-crossset8=setphone18w & sbaby8
-vs=valueset | crossset8
-cs=allsetw - vs
 #cs=set(phone8w) & sphone8
 #vs=set(phone8w) -cs
 
