@@ -242,7 +242,7 @@ def dynareduce(address):
     return filterdupaddress(result)
 
 def setdetail(prov,city,area,detail):
-    baredetail=detail.replace(prov,u"").replace(city,u"").replace(area,u"")
+    baredetail=detail.replace(area,u"").replace(city,u"").replace(prov,u"")
     if prov in zhixia:
         return city+area+baredetail
     elif city==area:
