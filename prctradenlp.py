@@ -5,7 +5,8 @@ from snownlp import SnowNLP
 import argparse
 import re
 #p=re.compile("[\s+\.\!\/\|\,_,$%^*()+\"\']+|[+——！，。？、~@#￥%……&*（）＠]+".decode("utf8"))
-p=re.compile("[\s+\.\!\|\,,$%^*+\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
+p=re.compile("[\.\!\|\,,$%^*+\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
+pspace=re.compile("\s+".decode("utf8"))
 paddress=re.compile("-".decode("utf8"))
 parser = argparse.ArgumentParser()
 parser.add_argument("input_csv")
@@ -294,7 +295,7 @@ def procaddress(content):
     fulladdr=u""
     if len(content)>7:
         content.append(content[6])
-        Detailaddress=content[6]
+        Detailaddress=pspace.sub("",content[6])
         content.append(u"")
         if content[3]==u"-":
             content[3]=u""
