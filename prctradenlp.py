@@ -123,8 +123,11 @@ fuzzywords=(u'省',u'市',u'县',u'镇',u'工业区',u'业园区',u'工业园',u
             u'桥头',u'交叉口',u'三岔口',u'交口')
 citys=[]
 dictcity={}
-PCA={}
+PCA={} #prov,city,area
 areas=[]
+CAS={} #city,area,street
+street=[]
+#加载 省-市对应表
 with open("citys.csv", 'rb') as f:
     #reader = csv.reader(f)
     reader = UnicodeReader(f)
@@ -134,6 +137,7 @@ with open("citys.csv", 'rb') as f:
         dictcity[row[1]]=row[0]
 f.close()
 
+#加载省-市-区 对应表
 with open("pca.csv",'rb') as f:
     reader = UnicodeReader(f)
     for row in reader:
@@ -143,6 +147,25 @@ with open("pca.csv",'rb') as f:
         PCA[row[4]][row[3]]=row[5]
 f.close()
 
+#加载市-区-街道 对应表
+with open("street.csv",'rb') as f:
+    reader=UnicodeReader(f)
+    for row in reader:
+        if row[1] in zhixia:
+            row[2]=row[1]+u"市"
+        if row[2] == u"市辖区" or row[2] ==u"县" or row[2].endswith(u"直辖县级行政区划"):
+            row[2]=row[3]
+        elif row[2]==u"铜仁市":
+            row[2]=u"铜仁地区"
+        elif row[2]==u"毕节市":
+            row[2]=u"毕节地区"
+        street.append(row[4])
+        if not CAS.has_key(row[2]):
+            CAS[row[2]]={}
+        CAS[row[2]][row[4]]=row[3]
+f.close()
+
+#用城市 查省信息
 def findprovincebycity(straddr):
     if straddr in dictcity:
         return getprovince(dictcity[straddr])
@@ -151,6 +174,7 @@ def findprovincebycity(straddr):
     else:
         return None
 
+#查省信息
 def getprovince(straddr):
     if straddr in provinces:
         result=straddr+u"省"
@@ -172,6 +196,7 @@ def getprovince(straddr):
         result=None
     return result
 
+#查市信息
 def getcity(straddr):
     if straddr == u"毕节市" or straddr == u"毕节":
         return u"毕节地区"
@@ -186,6 +211,7 @@ def getcity(straddr):
     else:
         return None
 
+#查区信息
 def getarea(straddrfilter):
     straddr=filterotherarea(straddrfilter)
     if straddr in areas :
@@ -199,6 +225,7 @@ def getarea(straddrfilter):
     else:
         return None
 
+#用省,区 查市
 def getcitybyProvArea(prov,straddr):
 #    if prov in zhixia:
 #        prov+=u"市"
@@ -211,6 +238,14 @@ def getcitybyProvArea(prov,straddr):
     else:
         return None
 
+def findstreetincity(city,straddr):
+    if CAS.has_key(city):
+        for s in CAS[city].keys():
+            if s in straddr:
+                return s
+    return None
+
+#从字符串开始 去重1次
 def filterdupaddress(straddr):
     dup=0
     for dup in range(len(straddr)/2,0,-1):
@@ -230,6 +265,7 @@ def filterdupaddress(straddr):
     else:
         return straddr
 
+#根据分词去重
 def dynareduce(address):
     addwords=SnowNLP(address).words
     for pos in range(0,len(addwords)-1):
@@ -242,6 +278,7 @@ def dynareduce(address):
         result+=words
     return filterdupaddress(result)
 
+#根据省市区详细地址 重构详细地址.
 def setdetail(prov,city,area,detail):
     baredetail=detail.replace(area,u"").replace(city,u"").replace(prov,u"")
     if prov in zhixia:
@@ -251,6 +288,7 @@ def setdetail(prov,city,area,detail):
     else:
         return prov+city+area+baredetail
 
+#纠正区域信息
 def filterotherarea(straddr):
     if u"其它区" in straddr:
 #        addrsplit = straddr.split(u"其它区",1)
@@ -282,12 +320,14 @@ def filterotherarea(straddr):
     else:
         return straddr
 
+#是否模糊字结尾
 def isfuzzyend(straddr):
     for i in fuzzywords:
         if straddr.endswith(i):
             return True
     return False
 
+#处理 地址字段 要求 contnet[3] 省 content[4] 市 conten[5] 区 content[6] 详细地址
 def procaddress(content):
     addr=None
     city=None
@@ -296,6 +336,7 @@ def procaddress(content):
     if len(content)>7:
         content.append(content[6])
         Detailaddress=pspace.sub("",content[6])
+        content.append(u"")
         content.append(u"")
         if content[3]==u"-":
             content[3]=u""
@@ -311,8 +352,6 @@ def procaddress(content):
                 Detailaddress=Detailaddress.replace(content[5],"",1)
 
         content[6]=Detailaddress
-
-
     else:
 #        print content
         content.append(u"数据不完整")
@@ -518,6 +557,10 @@ def procaddress(content):
     if isfuzzyend(content[6]):
         content[13]+=u"模糊字结尾"
 #        address_status = False
+    street=findstreetincity(content[4],content[6])
+    if street!=None:
+        content[14]=street
+        content[6]=content[6].replace(street,u"")
 
     return content
 
@@ -538,6 +581,7 @@ with open(args.input_csv, 'rb') as f:
     headers = reader.next()
     headers.append("address_backup")
     headers.append("remark")
+    headers.append("street")
     for row in reader:
         if len(row)<12:
             print row
