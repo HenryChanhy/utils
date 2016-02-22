@@ -397,78 +397,84 @@ def procaddress(content):
         else:
             content[4]=city
 
-        s=SnowNLP(content[6])
-        addrs=s.words
-        if len(addrs) > 1:
-            if addrs[0] in provincesf:
-                i=0
-            elif addrs[0] in zhixia :
-                content[6]=addrs[0]+u"市"
-                for c in addrs[1:]:
-                    if not content[6].endswith(c):
-                        content[6]+=c
-
-            elif addrs[0] in zizhi:
-                content[6]=addrs[0]+u"自治区"
-                pos=1
-                if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划'):
-                    pos+=1
-                for c in addrs[pos:]:
-                    if not content[6].endswith(c):
-                        content[6]+=c
-            elif addrs[0] == u"新疆":
-                content[6]=u"新疆维吾尔自治区"
-                pos=1
-                if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划'):
-                    pos+=1
-                for c in addrs[pos:]:
-                    if not content[6].endswith(c):
-                        content[6]+=c
-            elif addrs[0] == u"广西":
-                content[6]=u"广西壮族自治区"
-                pos=1
-                if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划'):
-                    pos+=1
-                for c in addrs[pos:]:
-                    if not content[6].endswith(c):
-                        content[6]+=c
-            elif addrs[0] == u"宁夏":
-                content[6]=u"宁夏回族自治区"
-                pos=1
-                if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划'):
-                    pos+=1
-                for c in addrs[pos:]:
-                    if not content[6].endswith(c):
-                        content[6]+=c
-            elif addrs[0] in provinces:
-                content[6]=addrs[0]+u"省"
-                pos=1
-                if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划'):
-                    pos+=1
-                for c in addrs[pos:]:
-                    if not content[6].endswith(c):
-                        content[6]+=c
-            elif addrs[0] in zhixiashi:
-                content[6]=addrs[0]
-                for c in addrs[1:]:
-                    if not content[6].endswith(c):
-                        content[6]+=c
-            else:
-                if content[3] in zhixia:
-                    addrfull=u""
-                else:
-                    addrfull=content[3]
-#                    if content[5] == u"其它区" or content[5]==u"市辖区":
-                content[5] = area
-                for contents in content[4:7]:
-                    addrfull+=contents
-                content[6]=addrfull
-#            content[5] == area:
-            content[6] = dynareduce(filterotherarea(content[6]))
-        else:#內容過短
-#            address_status=False
-            content[13]+=u"详细地址太短"
-    else:#没有详细地址字段，需拆分省市区
+#         s=SnowNLP(content[6])
+#         addrs=s.words
+#         if len(addrs) > 1:
+#             if addrs[0] in provincesf:
+#                 i=0
+#             elif addrs[0] in zhixia :
+#                 content[6]=addrs[0]+u"市"
+#                 for c in addrs[1:]:
+#                     if not content[6].endswith(c):
+#                         content[6]+=c
+#
+#             elif addrs[0] in zizhi:
+#                 content[6]=addrs[0]+u"自治区"
+#                 pos=1
+#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划') or addrs[pos].endswith(u'自治区'):
+#                     pos+=1
+#                 for c in addrs[pos:]:
+#                     if not content[6].endswith(c):
+#                         content[6]+=c
+#             elif addrs[0] == u"新疆":
+#                 content[6]=u"新疆维吾尔自治区"
+#                 pos=1
+#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划') or addrs[pos] ==u"维吾尔":
+#                     pos+=1
+#                 if addrs[pos].endswith(u'自治区'):
+#                     pos+=1
+#                 for c in addrs[pos:]:
+#                     if not content[6].endswith(c):
+#                         content[6]+=c
+#             elif addrs[0] == u"广西":
+#                 content[6]=u"广西壮族自治区"
+#                 pos=1
+#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划') or addrs[pos] ==u"壮族":
+#                     pos+=1
+#                 if addrs[pos].endswith(u'自治区'):
+#                     pos+=1
+#                 for c in addrs[pos:]:
+#                     if not content[6].endswith(c):
+#                         content[6]+=c
+#             elif addrs[0] == u"宁夏":
+#                 content[6]=u"宁夏回族自治区"
+#                 pos=1
+#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划') or addrs[pos] ==u"回族":
+#                     pos+=1
+#                 if addrs[pos].endswith(u'自治区'):
+#                     pos+=1
+#                 for c in addrs[pos:]:
+#                     if not content[6].endswith(c):
+#                         content[6]+=c
+#             elif addrs[0] in provinces:
+#                 content[6]=addrs[0]+u"省"
+#                 pos=1
+#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划'):
+#                     pos+=1
+#                 for c in addrs[pos:]:
+#                     if not content[6].endswith(c):
+#                         content[6]+=c
+#             elif addrs[0] in zhixiashi:
+#                 content[6]=addrs[0]
+#                 for c in addrs[1:]:
+#                     if not content[6].endswith(c):
+#                         content[6]+=c
+#             else:
+#                 if content[3] in zhixia:
+#                     addrfull=u""
+#                 else:
+#                     addrfull=content[3]
+# #                    if content[5] == u"其它区" or content[5]==u"市辖区":
+#                 content[5] = area
+#                 for contents in content[4:7]:
+#                     addrfull+=contents
+#                 content[6]=addrfull
+# #            content[5] == area:
+#             content[6] = dynareduce(filterotherarea(content[6]))
+#         else:#內容過短
+# #            address_status=False
+#             content[13]+=u"详细地址太短"
+    else:#没有省市区字段，需拆分详细地址
         if addr!=None:
             fulladdr+=addr
         if city!=None:
