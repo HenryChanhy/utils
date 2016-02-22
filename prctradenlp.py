@@ -270,7 +270,7 @@ def dynareduce(address):
     addwords=SnowNLP(address).words
     for pos in range(0,len(addwords)-1):
         for pos1 in range(pos+1,len(addwords)-1):
-            if addwords[pos] == addwords[pos1] and not addwords[pos].isdigit():
+            if len(addwords[pos]) >1 and addwords[pos] == addwords[pos1] and not addwords[pos].isdigit():
                 addwords[pos1]=u""
                 break
     result=u""
@@ -316,7 +316,11 @@ def filterotherarea(straddr):
     elif u"毕节市" in straddr:
         return straddr.replace(u"毕节市",u"七星关区")
     elif u"铜仁市" in straddr:
-        return straddr.replace(u"毕节市",u"铜仁地区")
+        return straddr.replace(u"铜仁市",u"铜仁地区")
+    elif u"东陵区" in straddr:
+        return straddr.replace(u"东陵区",u"浑南区")
+    elif u"浑南新区" in straddr:
+        return straddr.replace(u"浑南新区",u"浑南区")
     else:
         return straddr
 
@@ -383,7 +387,7 @@ def procaddress(content):
             else:
                 fulladdr=addr+city+area+content[6]
         content[6]=fulladdr
-        area=filterotherarea(area)
+        area=getarea(area)
         if city == u"":
             if addr in zhixia:
                 city=addr+u"市"
@@ -563,8 +567,6 @@ def procaddress(content):
         content[6]=content[6].replace(street,u"")
 
     return content
-
-
 
 phone8w=[]
 phone18w=[]
