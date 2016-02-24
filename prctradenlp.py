@@ -238,11 +238,12 @@ def getcitybyProvArea(prov,straddr):
     else:
         return None
 
-def findstreetincity(city,straddr):
+def findstreetincity(city,area,straddr):
     if CAS.has_key(city):
         for s in CAS[city].keys():
             if s in straddr:
-                return s
+                if CAS[city][s]==area:
+                    return s
     return None
 
 #从字符串开始 去重1次
@@ -317,10 +318,18 @@ def filterotherarea(straddr):
         return straddr.replace(u"毕节市",u"七星关区")
     elif u"铜仁市" in straddr:
         return straddr.replace(u"铜仁市",u"铜仁地区")
-    elif u"东陵区" in straddr:
-        return straddr.replace(u"东陵区",u"浑南区")
     elif u"浑南新区" in straddr:
         return straddr.replace(u"浑南新区",u"浑南区")
+    elif u"东陵区" in straddr:
+        return straddr.replace(u"东陵区",u"浑南区")
+    elif u"赣榆区" in straddr:
+        return straddr.replace(u"赣榆区",u"赣榆县")
+    elif u"铜梁区" in straddr:
+        return straddr.replace(u"铜梁区",u"铜梁县")
+    elif u"龙马潭" in straddr:
+        return straddr.replace(u"龙马潭",u"龙马潭区")
+    elif u"广州省" in straddr: #correct some mistypo
+        return straddr.replace(u"广州省",u"广东省")
     else:
         return straddr
 
@@ -386,7 +395,7 @@ def procaddress(content):
                 fulladdr=city+area+content[6]
             else:
                 fulladdr=addr+city+area+content[6]
-        content[6]=fulladdr
+        content[6]=dynareduce(filterotherarea(fulladdr))
         area=getarea(area)
         if city == u"":
             if addr in zhixia:
@@ -470,7 +479,7 @@ def procaddress(content):
 #                     addrfull+=contents
 #                 content[6]=addrfull
 # #            content[5] == area:
-#             content[6] = dynareduce(filterotherarea(content[6]))
+#             content[6] = dynareduce(filterotherarea(filterotherarea(content[6])))
 #         else:#內容過短
 # #            address_status=False
 #             content[13]+=u"详细地址太短"
@@ -567,7 +576,7 @@ def procaddress(content):
     if isfuzzyend(content[6]):
         content[13]+=u"模糊字结尾"
 #        address_status = False
-    street=findstreetincity(content[4],content[6])
+    street=findstreetincity(content[4],content[5],content[6])
     if street!=None:
         content[14]=street
         content[6]=content[6].replace(street,u"")
