@@ -131,6 +131,8 @@ PCA={} #prov,city,area
 areas=[]
 CAS={} #city,area,street
 street=[]
+cityclass={}
+areaclass={}
 #加载 省-市对应表
 with open("citys.csv", 'rb') as f:
     #reader = csv.reader(f)
@@ -167,6 +169,15 @@ with open("street.csv",'rb') as f:
         if not CAS.has_key(row[2]):
             CAS[row[2]]={}
         CAS[row[2]][row[4]]=row[3]
+f.close()
+
+#加载城市分级表
+with open("cityclass.csv",'rb') as f:
+    reader=UnicodeReader(f)
+    for row in reader:
+        cityclass[row[3]]=row[7]
+        if row[5] not in row[3]:
+            areaclass[row[5]]=row[7]
 f.close()
 
 #用城市 查省信息
@@ -241,6 +252,14 @@ def getcitybyProvArea(prov,straddr):
 #        return PCA[prov][straddr+u"市"]
     else:
         return None
+
+def getcityclass(city,area):
+    if areaclass.has_key(area):
+        return areaclass[area]
+    elif cityclass.has_key(city):
+        return cityclass[city]
+    else:
+        return u""
 
 def findstreetincity(city,area,straddr):
     if CAS.has_key(city):
@@ -559,7 +578,7 @@ def procaddress(content):
     if street!=None:
         content[14]=street
         content[6]=content[6].replace(street,u"")
-
+    content.append(getcityclass(content[4],content[5]))
     return content
 
 phone8w=[]
@@ -578,6 +597,7 @@ with open(args.input_csv, 'rb') as f:
     headers.append("address_backup")
     headers.append("remark")
     headers.append("street")
+    headers.append("cityclass")
     for row in reader:
         if len(row)<12:
             print row
