@@ -5,7 +5,7 @@ from snownlp import SnowNLP
 import argparse
 import re
 #p=re.compile("[\s+\.\!\/\|\,_,$%^*()+\"\']+|[+——！，。？、~@#￥%……&*（）＠]+".decode("utf8"))
-p=re.compile("[\.\!\|\,,$%^*+\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
+p=re.compile("[\s+\.\!\|\,\\\$%^*+\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
 pspace=re.compile("\s+".decode("utf8"))
 paddress=re.compile("-".decode("utf8"))
 parser = argparse.ArgumentParser()
@@ -121,6 +121,10 @@ provincesf=(u'北京',u'上海',u'天津',u'重庆',u'香港',u'澳门',u'河北
 fuzzywords=(u'省',u'市',u'县',u'镇',u'工业区',u'业园区',u'工业园',u'公园',u'管理区',u'开发区',u'新区',u'大道',u'国道',
             u'道',u'路',u'桥',u'路口',u'街上',u'街',u'门口',u'市场',u'附近',u'车站',u'快递',u'物流',u'自取',u'自提',
             u'桥头',u'交叉口',u'三岔口',u'交口')
+fixaddress={u"其它区":u"",u"市辖区":u"",u"墉桥区":u"埇桥区",u"璧山区":u"璧山县",u"高陵区":u"高陵县",u"富阳区":u"富阳市",
+            u"藁城区":u"藁城市",u"溧水区":u"溧水县",u"南溪区":u"南溪县",u"鹿泉区":u"鹿泉市",u"大足区":u"大足县",
+            u"毕节市":u"七星关区",u"铜仁市":u"铜仁地区",u"浑南新区":u"浑南区",u"东陵区":u"浑南区",u"赣榆区":u"赣榆县",
+            u"铜梁区":u"铜梁县",u"龙马潭":u"龙马潭区",u"上虞区":u"上虞市",u"广州省":u"广东省",u"广西省":u""}
 citys=[]
 dictcity={}
 PCA={} #prov,city,area
@@ -229,7 +233,7 @@ def getarea(straddrfilter):
 def getcitybyProvArea(prov,straddr):
 #    if prov in zhixia:
 #        prov+=u"市"
-    if PCA[prov].has_key(getarea(straddr)):
+    if PCA.has_key(prov) and PCA[prov].has_key(getarea(straddr)):
         return PCA[prov][getarea(straddr)]
 #    elif PCA[prov].has_key(straddr+u"区"):
 #        return PCA[prov][straddr+u"区"]
@@ -291,47 +295,10 @@ def setdetail(prov,city,area,detail):
 
 #纠正区域信息
 def filterotherarea(straddr):
-    if u"其它区" in straddr:
-#        addrsplit = straddr.split(u"其它区",1)
-        return straddr.replace(u"其它区",u"")
-    elif u"市辖区" in straddr:
-        return straddr.replace(u"市辖区",u"")
-    elif u"墉桥区" in straddr:
-        return straddr.replace(u"墉桥区",u"埇桥区")
-    elif u"璧山区" in straddr:
-        return straddr.replace(u"璧山区",u"璧山县")
-    elif u"高陵区" in straddr:
-        return straddr.replace(u"高陵区",u"高陵县")
-    elif u"富阳区" in straddr:
-        return straddr.replace(u"富阳区",u"富阳市")
-    elif u"藁城区" in straddr:
-        return straddr.replace(u"藁城区",u"藁城市")
-    elif u"溧水区" in straddr:
-        return straddr.replace(u"溧水区",u"溧水县")
-    elif u"南溪区" in straddr:
-        return straddr.replace(u"南溪区",u"南溪县")
-    elif u"鹿泉区" in straddr:
-        return straddr.replace(u"鹿泉区",u"鹿泉市")
-    elif u"大足区" in straddr:
-        return straddr.replace(u"大足区",u"大足县")
-    elif u"毕节市" in straddr:
-        return straddr.replace(u"毕节市",u"七星关区")
-    elif u"铜仁市" in straddr:
-        return straddr.replace(u"铜仁市",u"铜仁地区")
-    elif u"浑南新区" in straddr:
-        return straddr.replace(u"浑南新区",u"浑南区")
-    elif u"东陵区" in straddr:
-        return straddr.replace(u"东陵区",u"浑南区")
-    elif u"赣榆区" in straddr:
-        return straddr.replace(u"赣榆区",u"赣榆县")
-    elif u"铜梁区" in straddr:
-        return straddr.replace(u"铜梁区",u"铜梁县")
-    elif u"龙马潭" in straddr:
-        return straddr.replace(u"龙马潭",u"龙马潭区")
-    elif u"广州省" in straddr: #correct some mistypo
-        return straddr.replace(u"广州省",u"广东省")
-    else:
-        return straddr
+    for fixword in fixaddress.keys():
+        if fixword in straddr:
+            return straddr.replace(fixword,fixaddress[fixword])
+    return straddr
 
 #是否模糊字结尾
 def isfuzzyend(straddr):
@@ -347,8 +314,8 @@ def procaddress(content):
     area=None
     fulladdr=u""
     if len(content)>7:
-        content.append(content[6])
-        Detailaddress=pspace.sub("",content[6])
+        Detailaddress=p.sub("",content[6])
+        content.append(Detailaddress)
         content.append(u"")
         content.append(u"")
         if content[3]==u"-":
@@ -375,10 +342,18 @@ def procaddress(content):
 #        content[6]+=contents
     if content[3]!='':
         addr=getprovince(content[3])
+        if addr!=None:
+            content[3]=addr
+        else:
+            content[3]=u""
     if content[4]!='':
         city=getcity(content[4])
+        if city!=None:
+            content[4]=city
     if content[5]!='': #有详细地址字段
         area=getarea(content[5])
+        if area!=None:
+            content[5]=area
 
     if addr!=None and city!=None and area!=None:
         content[3]=addr
@@ -539,30 +514,34 @@ def procaddress(content):
                     city=getcity(addrs[posc])
                     if city!=None:
                         break
+                    city=getcitybyProvArea(addr,addrs[posc])
+                    if city!=None:
+                        area=getarea(addrs[posc])
+                        break
             if city==None or findprovincebycity(city)!=addr:
                 city=u""
                 content[13]+=u"找不到市信息,"
             else:
                 content[6]+=city
-                if area ==None and content[5]!=u"":
-                    area=getarea(content[5])
-                if area==None:
-                    for posa in range(posc,len(addrs)-1):
-                        area=getarea(addrs[posa])
-                        if area!=None:
-                            break
-                if area==None or getcitybyProvArea(addr,area)!= city:
-                    area=u""
-                    posa=1
-                    content[13]+=u"找不到区信息"
-                else:
-                    content[6]+=area
-                    if city==u"":
-                        city=area
-                if posa > 0:
-                    posa+=1
-                for detail in addrs[posa:]:
-                    content[6]+=detail
+            if area ==None and content[5]!=u"":
+                area=getarea(content[5])
+            if area==None:
+                for posa in range(posc,len(addrs)-1):
+                    area=getarea(addrs[posa])
+                    if area!=None:
+                        break
+            if area==None or getcitybyProvArea(addr,area)!= city:
+                area=u""
+                posa=1
+                content[13]+=u"找不到区信息"
+            else:
+                content[6]+=area
+                if city==u"":
+                    city=area
+            # if posa > 0:
+            #     posa+=1
+            for detail in addrs[posa:]:
+                content[6]+=detail
         content[3]=addr
         content[4]=city
         content[5]=area
