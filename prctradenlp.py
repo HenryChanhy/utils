@@ -175,7 +175,8 @@ f.close()
 with open("cityclass.csv",'rb') as f:
     reader=UnicodeReader(f)
     for row in reader:
-        cityclass[row[3]]=row[7]
+        if not cityclass.has_key(row[3]):
+            cityclass[row[3]]=row[7]
         if row[5] not in row[3]:
             areaclass[row[5]]=row[7]
 f.close()
