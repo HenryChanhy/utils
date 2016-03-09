@@ -5,7 +5,7 @@ from snownlp import SnowNLP
 import argparse
 import re
 #p=re.compile("[\s+\.\!\/\|\,_,$%^*()+\"\']+|[+——！，。？、~@#￥%……&*（）＠]+".decode("utf8"))
-p=re.compile("[\s+\.\!\|\,\\\$%^*+\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
+p=re.compile("[\.\!\|\,\\\$%^*+\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
 pspace=re.compile("\s+".decode("utf8"))
 paddress=re.compile("-".decode("utf8"))
 parser = argparse.ArgumentParser()
@@ -124,7 +124,7 @@ fuzzywords=(u'省',u'市',u'县',u'镇',u'工业区',u'业园区',u'工业园',u
 fixaddress={u"其它区":u"",u"市辖区":u"",u"墉桥区":u"埇桥区",u"璧山区":u"璧山县",u"高陵区":u"高陵县",u"富阳区":u"富阳市",
             u"藁城区":u"藁城市",u"溧水区":u"溧水县",u"南溪区":u"南溪县",u"鹿泉区":u"鹿泉市",u"大足区":u"大足县",
             u"毕节市":u"七星关区",u"铜仁市":u"铜仁地区",u"浑南新区":u"浑南区",u"东陵区":u"浑南区",u"赣榆区":u"赣榆县",
-            u"铜梁区":u"铜梁县",u"龙马潭":u"龙马潭区",u"上虞区":u"上虞市",u"广州省":u"广东省",u"广西省":u""}
+            u"铜梁区":u"铜梁县",u"龙马潭":u"龙马潭区",u"上虞区":u"上虞市",u"广州省":u"广东省",u"广西省":u"",u"临河市":u"临河区"}
 citys=[]
 dictcity={}
 PCA={} #prov,city,area
@@ -292,16 +292,19 @@ def filterdupaddress(straddr):
 
 #根据分词去重
 def dynareduce(address):
-    addwords=SnowNLP(address).words
-    for pos in range(0,len(addwords)-1):
-        for pos1 in range(pos+1,len(addwords)-1):
-            if len(addwords[pos]) >1 and addwords[pos] == addwords[pos1] and not addwords[pos].isdigit():
-                addwords[pos1]=u""
-                break
-    result=u""
-    for words in addwords:
-        result+=words
-    return filterdupaddress(result)
+    if len(address)>0:
+        addwords=SnowNLP(address).words
+        for pos in range(0,len(addwords)-1):
+            for pos1 in range(pos+1,len(addwords)-1):
+                if len(addwords[pos]) >1 and addwords[pos] == addwords[pos1] and not addwords[pos].isdigit():
+                    addwords[pos1]=u""
+                    break
+        result=u""
+        for words in addwords:
+            result+=words
+        return filterdupaddress(result)
+    else:
+        return address
 
 #根据省市区详细地址 重构详细地址.
 def setdetail(prov,city,area,detail):
@@ -334,7 +337,7 @@ def procaddress(content):
     area=None
     fulladdr=u""
     if len(content)>7:
-        Detailaddress=p.sub("",content[6])
+        Detailaddress=pspace.sub("",content[6])
         content.append(Detailaddress)
         content.append(u"")
         content.append(u"")
