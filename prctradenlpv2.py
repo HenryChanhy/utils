@@ -186,22 +186,29 @@ f.close()
 #查找表头
 dictcol={}
 dictcol[u"mobilphone"]=(u"手机号",u"mobilPhone",u"mobilePhone",u"手机")
-dictcol[u"prov"]=(u"省",u"province")
+dictcol[u"prov"]=(u"省",u"province",u"省份")
 dictcol[u"city"]=(u"市",u"city")
 dictcol[u"area"]=(u"区",u"area")
 dictcol[u"address"]=(u"地址",u"address")
 dictcol[u"address_backup"]=(u"address_backup",u"备份地址")
 dictcol[u"remark"]=(u"remark",u"备注",u"说明")
 dictcol[u"street"]=(u"street",u"街道")
-dictcol[u"cityclass"]=(u"cityclass",u"城市级别")
+#dictcol[u"cityclass"]=(u"cityclass",u"城市级别")
 headercol={}
 def checkheader(header):
+    emptyfield=[]
+    for i in range(0,len(header)-1):
+        if len(header[i])==0:
+            emptyfield.append(i)
     for field in dictcol:
-        for i in range(0,len(header)):
+        for i in range(0,len(header)-1):
             if header[i] in dictcol[field]:
                 headercol[field]=i
                 break
-    return headercol
+        if not headercol.has_key(field):
+            headercol[field]=emptyfield.pop()
+            header[headercol[field]]=field
+    return header
 
 
 #用城市 查省信息
@@ -625,7 +632,7 @@ with open(args.input_csv, 'rb') as f:
     headers.append("remark")
     headers.append("street")
     headers.append("cityclass")
-    checkheader(headers)
+    headers=checkheader(headers)
     for row in reader:
         if len(row)<12:
             print row
