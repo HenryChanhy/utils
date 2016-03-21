@@ -125,7 +125,7 @@ fixaddress={u"其它区":u"",u"市辖区":u"",u"墉桥区":u"埇桥区",u"璧山
             u"藁城区":u"藁城市",u"溧水区":u"溧水县",u"南溪区":u"南溪县",u"鹿泉区":u"鹿泉市",u"大足区":u"大足县",
             u"毕节市":u"七星关区",u"铜仁市":u"铜仁地区",u"浑南新区":u"浑南区",u"东陵区":u"浑南区",u"赣榆区":u"赣榆县",
             u"铜梁区":u"铜梁县",u"龙马潭":u"龙马潭区",u"上虞区":u"上虞市",u"广州省":u"广东省",u"广西省":u"",u"临河市":u"临河区",
-            u"娄底地区":u"娄底市",u"海东市":u"海东地区",u"菏泽地区":u"菏泽市",u"巴彦淖尔盟":u"巴彦淖尔市"}
+            u"娄底地区":u"娄底市",u"海东市":u"海东地区",u"菏泽地区":u"菏泽市",u"巴彦淖尔盟":u"巴彦淖尔市",u"+":u"＋"}
 citys=[]
 dictcity={}
 PCA={} #prov,city,area
@@ -527,7 +527,12 @@ def procaddress(content):
 #        content[headercol[u"remark"]]+=u"省市区信息不对,"
 #        for contents in content[3:]:
 #        content[headercol[u"address"]]=fulladdr
-        addrs=SnowNLP(fulladdr).words
+        if len(fulladdr)>0 :
+            addrs=SnowNLP(fulladdr).words
+        else:
+            content[headercol[u"remark"]]+=u"数据问题,不能识别到地址."
+            print content
+            return content
         if addr==None:
             addr=getprovince(content[headercol[u"prov"]])
         if addr==None:
