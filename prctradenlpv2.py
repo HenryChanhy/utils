@@ -4,8 +4,9 @@ import csv, codecs, cStringIO
 from snownlp import SnowNLP
 import argparse
 import re
+from datetime import datetime
 #p=re.compile("[\s+\.\!\/\|\,_,$%^*()+\"\']+|[+——！，。？、~@#￥%……&*（）＠]+".decode("utf8"))
-p=re.compile("[\.\!\|\,\\\$%^*+\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
+p=re.compile("[\.\!\|\,\\\$%^*+=\"\']+|[+！，。？、~@￥%……&*＠]+".decode("utf8"))
 pspace=re.compile("\s+".decode("utf8"))
 paddress=re.compile("-".decode("utf8"))
 parser = argparse.ArgumentParser()
@@ -14,6 +15,7 @@ parser.add_argument("-H","--history")
 parser.add_argument("-o","--output_csv")
 parser.add_argument("-d","--dup_csv")
 parser.add_argument("-m","--mis_csv")
+parser.add_argument("-e","--event-history")
 args = parser.parse_args()
 namesplit= args.input_csv.rsplit(".")[0]
 if args.history==None:
@@ -24,6 +26,8 @@ if args.dup_csv==None:
     args.dup_csv=namesplit+'_dup.csv'
 if args.mis_csv==None:
     args.mis_csv=namesplit+'_mis.csv'
+if args.event_history==None:
+    args.event_history="event_history.txt"
 class UTF8Recoder:
     """
     Iterator that reads an encoded stream and reencodes the input to UTF-8
@@ -118,14 +122,27 @@ provinces=(u'河北',u'山西',u'辽宁',u'吉林',u'黑龙江',u'江苏',
 provincesf=(u'北京',u'上海',u'天津',u'重庆',u'香港',u'澳门',u'河北省',u'山西省',u'辽宁省',u'吉林省',u'黑龙江省',u'江苏省',
     u'浙江省',u'安徽省',u'福建省',u'江西省',u'山东省',u'河南省',u'湖北省',u'湖南省',u'广东省',u'广西壮族自治区',
     u'海南省',u'四川省',u'贵州省',u'云南省',u'西藏自治区',u'陕西省',u'甘肃省',u'青海省',u'宁夏回族自治区',u"新疆维吾尔自治区",u'内蒙古自治区')
-fuzzywords=(u'省',u'市',u'县',u'镇',u'工业区',u'业园区',u'工业园',u'公园',u'管理区',u'开发区',u'新区',u'大道',u'国道',
-            u'道',u'路',u'桥',u'路口',u'街上',u'街',u'门口',u'市场',u'附近',u'车站',u'快递',u'物流',u'自取',u'自提',
-            u'桥头',u'交叉口',u'三岔口',u'交口')
-fixaddress={u"其它区":u"",u"市辖区":u"",u"墉桥区":u"埇桥区",u"璧山区":u"璧山县",u"高陵区":u"高陵县",u"富阳区":u"富阳市",
+#fuzzywords 结尾不通过
+fuzzywords=(u'省',u'市',u'县',u'镇',u'工业区',u'业园区',u'工贸园',u'公园',u'管理区',u'开发区',u'新区',u'大道',u'国道',u'广场',u'街道',
+            u'道',u'路',u'桥',u'路口',u'街上',u'街',u'街上',u'道上',u'道口',u'门口',u'市场',u'附近',u'车站',u'快递',
+            u'圆通',u'顺丰',u'中通',u'申通',u'韵达',u'汇通',u'邮局',u'邮政局',u'网点',u'速递',u'镇邮局',u'物流',
+            u'桥头',u'交叉口',u'三岔口',u'交口',u'乡', u'旗',u'球场',u'快递公司',u'快递点',u'快递处',u'收点')
+#fuzzywords 结尾需要查看
+fuzzywords1=(u'自取',u'自提',u'取件', u'站', u'营业点', u'电话', u'短信', u'电联', u'打电话', u'点', u'中转站', )
+fixaddress={u"其它区":u"",u"市辖区":u"",u"地址":u"",u"墉桥区":u"埇桥区",u"璧山区":u"璧山县",u"高陵区":u"高陵县",u"富阳区":u"富阳市",
             u"藁城区":u"藁城市",u"溧水区":u"溧水县",u"南溪区":u"南溪县",u"鹿泉区":u"鹿泉市",u"大足区":u"大足县",
             u"毕节市":u"七星关区",u"铜仁市":u"铜仁地区",u"浑南新区":u"浑南区",u"东陵区":u"浑南区",u"赣榆区":u"赣榆县",
-            u"铜梁区":u"铜梁县",u"龙马潭":u"龙马潭区",u"上虞区":u"上虞市",u"广州省":u"广东省",u"广西省":u"",u"临河市":u"临河区",
-            u"娄底地区":u"娄底市",u"海东市":u"海东地区",u"菏泽地区":u"菏泽市",u"巴彦淖尔盟":u"巴彦淖尔市",u"+":u"＋"}
+            u"铜梁区":u"铜梁县",u"上虞区":u"上虞市",u"广州省":u"广东省",u"广西省":u"",u"临河市":u"临河区",
+            u"娄底地区":u"娄底市",u"海东市":u"海东地区",u"菏泽地区":u"菏泽市",u"巴彦淖尔盟":u"巴彦淖尔市",u"+":u"＋",
+            u"望城区":u"望城县",u"增城区":u"增城市",u"溧水区":u"溧水县",u"江都区":u"江都市",u"清新区":u"清新县",
+            u"文山市":u"文山县",u"从化区":u"从化市",u"潮安区":u"潮安县",u"电白区":u"电白县",u"藁城区":u"藁城市",u"陵城区":u"陵县",
+            u"南康区":u"南康市",u"綦江区":u"綦江县",u"增城区":u"增城市",u"吴江区":u"吴江市",u"铜山区":u"铜山县",u"文登区":u"文登市",
+            u"杨凌区":u"杨陵区",u"长安县":u"长安区",u"颖州区":u"颍州区",u"高淳区":u"高淳县",u"姜堰区":u"姜堰市",
+            u"胶南市":u"黄岛区",u"徐水区":u"徐水县",
+            # u"县县": u"县", u"市市": u"市", u"镇镇": u"镇", u"区区": u"区",
+            u"娄底地区":u"娄底市",u"直辖县级行政区划":u"",u"市辖区":u""}
+postbyprov=(u"新疆维吾尔自治区",u"西藏自治区",u"青海省",u"宁夏回族自治区",u"甘肃省",u"内蒙古自治区")
+
 citys=[]
 dictcity={}
 PCA={} #prov,city,area
@@ -185,27 +202,48 @@ f.close()
 
 #查找表头
 dictcol={}
-dictcol[u"mobilphone"]=(u"手机号",u"mobilPhone",u"mobilePhone",u"手机")
+dictcol[u"mobilphone"]=(u"手机号",u"mobilPhone",u"mobilePhone",u"手机",u"手机号码",u"申领手机号码",u"电话",)
+dictcol[u"consignee"]=(u"consignee",u"姓名",u"收件人姓名",u"申领用户名",u"用户名")
 dictcol[u"prov"]=(u"省",u"province",u"省份")
 dictcol[u"city"]=(u"市",u"city")
-dictcol[u"area"]=(u"区",u"area")
-dictcol[u"address"]=(u"地址",u"address")
-dictcol[u"address_backup"]=(u"address_backup",u"备份地址")
+dictcol[u"area"]=(u"区",u"area",u"区/县")
+dictcol[u"address"]=(u"收货地址",u"地址",u"用户申领地址",u"详细地址",u"addre",u"addrbkp",u"address",)
+#dictcol[u"address_backup"]=(u"address_backup",u"备份地址")
 dictcol[u"remark"]=(u"remark",u"备注",u"说明")
 dictcol[u"street"]=(u"street",u"街道")
+dictcol[u"order_date"]=(u"order_date")
+dictcol[u"buyer_msg"]=(u"buyer_msg",)          #used_brand
+dictcol[u"seller_remark"]=(u"seller_remark",)  #event_name
+dictcol[u"in_memo"]=(u"in_memo",)              #baby_birth
+dictcol[u"user_size"]=(u"user_size",)          #user_size
 #dictcol[u"cityclass"]=(u"cityclass",u"城市级别")
 headercol={}
+# def checkheader1(header):
+#     emptyfield=[]
+#     for i in range(0,len(header)-1):
+#         if len(header[i])==0:
+#             emptyfield.append(i)
+#     for field in dictcol:
+#         for i in range(0,len(header)-1):
+#             if header[i] in dictcol[field]:
+#                 headercol[field]=i
+#                 break
+#         if (not headercol.has_key(field)) and len(emptyfield) > 0:
+#             headercol[field]=emptyfield.pop()
+#             header[headercol[field]]=field
+#     return header
+
 def checkheader(header):
     emptyfield=[]
     for i in range(0,len(header)-1):
         if len(header[i])==0:
             emptyfield.append(i)
     for field in dictcol:
-        for i in range(0,len(header)-1):
-            if header[i] in dictcol[field]:
-                headercol[field]=i
+        for i in dictcol[field]:
+            if i in header:
+                headercol[field]=header.index(i)
                 break
-        if not headercol.has_key(field):
+        if (not headercol.has_key(field)) and len(emptyfield) > 0:
             headercol[field]=emptyfield.pop()
             header[headercol[field]]=field
     return header
@@ -259,7 +297,8 @@ def getcity(straddr):
 
 #查区信息
 def getarea(straddrfilter):
-    straddr=filterotherarea(straddrfilter)
+#    straddr=filterotherarea(straddrfilter)
+    straddr=straddrfilter
     if straddr in areas :
         return straddr
     elif straddr + u"市" in areas:
@@ -325,6 +364,20 @@ def dynareduce(address):
     if len(address)>0:
         addwords=SnowNLP(address).words
         for pos in range(0,len(addwords)-1):
+            temppro=getprovince(addwords[pos])
+            if pos < 3:
+                if temppro != None and len(temppro) > 0:
+                    addwords[pos]=temppro
+                else:
+                    tempcity=getcity(addwords[pos])
+                    if tempcity != None and len(tempcity) >0:
+                        addwords[pos]=tempcity
+                    else:
+                        temparea=getarea(addwords[pos])
+                        if temparea != None and len(temparea) > 0:
+                            addwords[pos]=temparea
+                if addwords[pos].endswith(addwords[pos+1]):
+                    addwords[pos+1]=u""
             for pos1 in range(pos+1,len(addwords)-1):
                 if len(addwords[pos]) >1 and addwords[pos] == addwords[pos1] and not addwords[pos].isdigit():
                     addwords[pos1]=u""
@@ -332,7 +385,7 @@ def dynareduce(address):
         result=u""
         for words in addwords:
             result+=words
-        return filterdupaddress(result)
+        return filterotherarea(result)
     else:
         return address
 
@@ -360,15 +413,72 @@ def isfuzzyend(straddr):
             return True
     return False
 
+def isfuzzyend1(straddr):
+    for i in fuzzywords1:
+        if straddr.endswith(i):
+            return True
+    return False
+
+def formatdatetime(strdate):
+    try:
+        d=datetime.strptime(strdate,"%Y-%m-%d %H:%M:%S")
+    except:
+        try:
+            d=datetime.strptime(strdate,"%Y/%m/%d")
+        except:
+            try:
+                d=datetime.strptime(strdate,"%m/%d/%Y %H:%M:%S")
+            except:
+                try:
+                    d = datetime.strptime(strdate, "%Y-%m-%d %H:%M")
+                except:
+                    try:
+                        d=datetime.strptime(strdate,"%m/%d/%y %H:%M")
+                    except:
+                        d=datetime.now()
+    return d.strftime("%Y/%m/%d %H:%M:%S")
+
+def getsize(strsize):
+    sizeset=("NB","S","M","XL","L")
+    for size in sizeset:
+        if size in strsize:
+            return size
+
+def checksize(strapplydate,strbirthday,strsize,shopid):
+    result=u""
+    if shopid == '103':
+        return result
+    applydate=datetime.strptime(formatdatetime(strapplydate),"%Y/%m/%d %H:%M:%S")
+    birthday=datetime.strptime(formatdatetime(strbirthday),"%Y/%m/%d %H:%M:%S")
+    agedays=(applydate-birthday).days
+    if agedays > 90 or agedays < -180:
+        result= u"申领日期不符" #u"宝宝月龄不符"
+    elif agedays >= 0 and getsize(strsize) != "S":
+        result = u"申领码数不符"
+    # elif or agedays < -180:
+    #     result = u"申领时间不符"  #u"预产期不符"
+    # elif agedays < 0 and getsize(strsize) != "NB":
+    #     result=u"申领码数不符"
+    return result
+
+
 #处理 地址字段 要求 contnet[3] 省 content[headercol[u"city"]] 市 conten[5] 区 content[headercol[u"address"]] 详细地址
 def procaddress(content):
     addr=None
     city=None
     area=None
+    temparea=u""
     fulladdr=u""
     if len(content)>7:
-        Detailaddress=pspace.sub("",content[headercol[u"address"]])
-        content.append(Detailaddress)
+        content.append(content[headercol[u"address"]])
+#        Detailaddress=pspace.sub("",content[headercol[u"address"]])
+#        Detailaddress=content[headercol[u"address"]]
+#         Detailaddress=content[headercol[u"address"]].split()[-1]
+#         if len(content[headercol[u"address"]].split()) > 1:
+#             temparea=content[headercol[u"address"]].split()[-2]
+#         else:
+#             temparea=u""
+#        content.append(Detailaddress)
         content.append(u"")
         content.append(u"")
         if content[headercol[u"prov"]]==u"-":
@@ -377,13 +487,24 @@ def procaddress(content):
             content[headercol[u"area"]]=u""
             Detailaddress=paddress.sub("",content[headercol[u"address"]])
         else:
+            Detailaddress = content[headercol[u"address"]]
+            address_split=Detailaddress.split()
+            address_len=len(address_split)
+            for posi in range(0,address_len-1):
+                if getprovince(address_split[posi]) != None:
+                    Detailaddress=Detailaddress.replace(address_split[posi],"", 1)
+                if getcity(address_split[posi]) != None:
+                    Detailaddress = Detailaddress.replace(address_split[posi], "", 1)
+                if getarea(address_split[posi]) != None:
+                    Detailaddress = Detailaddress.replace(address_split[posi], "", 1)
+                    temparea=address_split[posi]
+            Detailaddress=pspace.sub("",Detailaddress)
             if Detailaddress.startswith(content[headercol[u"prov"]]):
-                Detailaddress=Detailaddress.replace(content[headercol[u"prov"]],"",1)
+                Detailaddress=Detailaddress.replace(content[headercol[u"prov"]],"",)
             if Detailaddress.startswith(content[headercol[u"city"]]):
-                Detailaddress=Detailaddress.replace(content[headercol[u"city"]],"",1)
+                Detailaddress=Detailaddress.replace(content[headercol[u"city"]],"",)
             if Detailaddress.startswith(content[headercol[u"area"]]):
-                Detailaddress=Detailaddress.replace(content[headercol[u"area"]],"",1)
-
+                Detailaddress=Detailaddress.replace(content[headercol[u"area"]],"",)
         content[headercol[u"address"]]=Detailaddress
     else:
 #        print content
@@ -405,8 +526,10 @@ def procaddress(content):
             content[headercol[u"city"]]=city
     if content[headercol[u"area"]]!='': #有详细地址字段
         area=getarea(content[headercol[u"area"]])
-        if area!=None:
-            content[headercol[u"area"]]=area
+    else:
+        area=getarea(temparea)
+        if area!=None and getcitybyProvArea(addr,area) != city:
+            area=None
 
     if addr!=None and city!=None and area!=None:
         content[headercol[u"prov"]]=addr
@@ -414,6 +537,8 @@ def procaddress(content):
         content[headercol[u"area"]]=area
         if content[headercol[u"address"]].startswith(addr) and city in content[headercol[u"address"]] and area in content[headercol[u"address"]]:
             fulladdr=content[headercol[u"address"]]
+#        elif content[headercol[u"address"]].startswith(addr[:len(addr)-1]) and city in content[headercol[u"address"]] and area in content[headercol[u"address"]]:
+#            fulladdr=content[headercol[u"address"]].replace(addr[:len(addr)-1],addr)
         elif area in content[headercol[u"address"]] and city in content[headercol[u"address"]]:
             fulladdr=addr+content[headercol[u"address"]]
         elif area in content[headercol[u"address"]]:
@@ -424,7 +549,7 @@ def procaddress(content):
             else:
                 fulladdr=addr+city+area+content[headercol[u"address"]]
         content[headercol[u"address"]]=dynareduce(filterotherarea(fulladdr))
-        area=getarea(area)
+#        area=getarea(area)
         if city == u"":
             if addr in zhixia:
                 city=addr+u"市"
@@ -434,83 +559,6 @@ def procaddress(content):
         else:
             content[headercol[u"city"]]=city
 
-#         s=SnowNLP(content[headercol[u"address"]])
-#         addrs=s.words
-#         if len(addrs) > 1:
-#             if addrs[0] in provincesf:
-#                 i=0
-#             elif addrs[0] in zhixia :
-#                 content[headercol[u"address"]]=addrs[0]+u"市"
-#                 for c in addrs[1:]:
-#                     if not content[headercol[u"address"]].endswith(c):
-#                         content[headercol[u"address"]]+=c
-#
-#             elif addrs[0] in zizhi:
-#                 content[headercol[u"address"]]=addrs[0]+u"自治区"
-#                 pos=1
-#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划') or addrs[pos].endswith(u'自治区'):
-#                     pos+=1
-#                 for c in addrs[pos:]:
-#                     if not content[headercol[u"address"]].endswith(c):
-#                         content[headercol[u"address"]]+=c
-#             elif addrs[0] == u"新疆":
-#                 content[headercol[u"address"]]=u"新疆维吾尔自治区"
-#                 pos=1
-#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划') or addrs[pos] ==u"维吾尔":
-#                     pos+=1
-#                 if addrs[pos].endswith(u'自治区'):
-#                     pos+=1
-#                 for c in addrs[pos:]:
-#                     if not content[headercol[u"address"]].endswith(c):
-#                         content[headercol[u"address"]]+=c
-#             elif addrs[0] == u"广西":
-#                 content[headercol[u"address"]]=u"广西壮族自治区"
-#                 pos=1
-#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划') or addrs[pos] ==u"壮族":
-#                     pos+=1
-#                 if addrs[pos].endswith(u'自治区'):
-#                     pos+=1
-#                 for c in addrs[pos:]:
-#                     if not content[headercol[u"address"]].endswith(c):
-#                         content[headercol[u"address"]]+=c
-#             elif addrs[0] == u"宁夏":
-#                 content[headercol[u"address"]]=u"宁夏回族自治区"
-#                 pos=1
-#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划') or addrs[pos] ==u"回族":
-#                     pos+=1
-#                 if addrs[pos].endswith(u'自治区'):
-#                     pos+=1
-#                 for c in addrs[pos:]:
-#                     if not content[headercol[u"address"]].endswith(c):
-#                         content[headercol[u"address"]]+=c
-#             elif addrs[0] in provinces:
-#                 content[headercol[u"address"]]=addrs[0]+u"省"
-#                 pos=1
-#                 if addrs[pos] == u"省" or addrs[pos].endswith(u'直辖县级行政区划'):
-#                     pos+=1
-#                 for c in addrs[pos:]:
-#                     if not content[headercol[u"address"]].endswith(c):
-#                         content[headercol[u"address"]]+=c
-#             elif addrs[0] in zhixiashi:
-#                 content[headercol[u"address"]]=addrs[0]
-#                 for c in addrs[1:]:
-#                     if not content[headercol[u"address"]].endswith(c):
-#                         content[headercol[u"address"]]+=c
-#             else:
-#                 if content[headercol[u"prov"]] in zhixia:
-#                     addrfull=u""
-#                 else:
-#                     addrfull=content[headercol[u"prov"]]
-# #                    if content[headercol[u"area"]] == u"其它区" or content[headercol[u"area"]]==u"市辖区":
-#                 content[headercol[u"area"]] = area
-#                 for contents in content[4:7]:
-#                     addrfull+=contents
-#                 content[headercol[u"address"]]=addrfull
-# #            content[headercol[u"area"]] == area:
-#             content[headercol[u"address"]] = dynareduce(filterotherarea(filterotherarea(content[headercol[u"address"]])))
-#         else:#內容過短
-# #            address_status=False
-#             content[headercol[u"remark"]]+=u"详细地址太短"
     else:#没有省市区字段，需拆分详细地址
         if addr!=None:
             fulladdr+=addr
@@ -520,7 +568,7 @@ def procaddress(content):
             fulladdr+=area
         fulladdr+=content[headercol[u"address"]]
 #        fulladdr=dynareduce(content[headercol[u"prov"]]+content[headercol[u"city"]]+content[headercol[u"area"]]+content[headercol[u"address"]])
-        content[headercol[u"address"]]=fulladdr
+        content[headercol[u"address"]]=filterotherarea(fulladdr)
         posp=0
         posc=0
         posa=0
@@ -611,7 +659,10 @@ def procaddress(content):
     content[headercol[u"address"]]=setdetail(content[headercol[u"prov"]],content[headercol[u"city"]],content[headercol[u"area"]],content[headercol[u"address"]])
 
     if isfuzzyend(content[headercol[u"address"]]):
-        content[headercol[u"remark"]]+=u"模糊字结尾"
+        content[headercol[u"remark"]]+=u"不通过"
+    elif isfuzzyend1(content[headercol[u"address"]]):
+        content[headercol[u"remark"]] += u"需要查看"
+
 #        address_status = False
     street=findstreetincity(content[headercol[u"city"]],content[headercol[u"area"]],content[headercol[u"address"]])
     if street!=None:
@@ -623,8 +674,10 @@ def procaddress(content):
 phone8w=[]
 phone18w=[]
 dict87w={}
-
-
+phoneevent=[]
+dictevent={}
+eventphones=[]
+dicteventphones={}
 #for i in range(1,len(allLines)):
 #    phone8w.append(allLines[i].split(",")[0])
 #    dict87w[allLines[i].split(",")[0]]=i
@@ -638,8 +691,10 @@ with open(args.input_csv, 'rb') as f:
     headers.append("street")
     headers.append("cityclass")
     headers=checkheader(headers)
+    wrongheaders = headers
+    wrongheaders.append("dupdate")
     for row in reader:
-        if len(row)<12:
+        if len(row)<7:
             print row
         else:
 #            if u"8片" in row[8]:
@@ -647,8 +702,12 @@ with open(args.input_csv, 'rb') as f:
 #            elif row[11]=="36" or row[11]=="38":
 #                phone18w.append(row[0])
 #            else:
-            phone8w.append(row[headercol[u"mobilphone"]])
-            dict87w[row[headercol[u"mobilphone"]]]=row
+            if row[headercol[u"seller_remark"]] == "1":
+                phoneevent.append(row[headercol[u"mobilphone"]])
+                dictevent[row[headercol[u"mobilphone"]]]=row
+            else:
+                phone8w.append(row[headercol[u"mobilphone"]])
+                dict87w[row[headercol[u"mobilphone"]]]=row
 #phone8=[]
 #for i in open(args.history):
 #    phone8.append(i[0:11])
@@ -675,12 +734,27 @@ allsetw=set(phone8w) | setphone18w
 cs=allsetw & allsets
 vs=allsetw - cs
 
+with open(args.event_history, 'rb') as ef:
+    reader = UnicodeReader(ef)
+    for row in reader:
+        if len(row)>1:
+            eventphones.append(row[0])
+            dicteventphones[row[0]]=row[1]
+
+setevent=set(phoneevent)
+seteh=set(eventphones)
+eventphone=setevent-seteh
+eventdup=setevent & seteh
+
 #cs=set(phone8w) & sphone8
 #vs=set(phone8w) -cs
 
-print len(allsetw)
-print len(vs)
-print len(cs)
+print "trade: " +str(len(allsetw))
+print "ok: " +str(len(vs))
+print "dup: " +str(len(cs))
+print "event: " +str(len(eventphone))
+print "eventdup: " +str(len(eventdup))
+
 
 true87w=open(args.output_csv,"w")
 
@@ -690,20 +764,41 @@ true87=UnicodeWriter(true87w)
 #misaddr=UnicodeWriter(misaddrw)
 wrong87w=open(args.dup_csv,"w")
 #wrong87=csv.writer(wrong87w)
+ehistoryw=open(args.event_history,"ab")
+ehistory=UnicodeWriter(ehistoryw)
 wrong87=UnicodeWriter(wrong87w)
-wrong87.writerow(headers)
-for c in cs:
-    rowcontent=dict87w[c]
-    rowcontent.append(dictallphones[c])
-    wrong87.writerow(rowcontent)
-wrong87w.close()
-
+wrong87.writerow(wrongheaders)
 true87.writerow(headers)
+for c in cs:
+    content=procaddress(dict87w[c])
+    content.append(dictallphones[c])
+    wrong87.writerow(content)
+for ed in eventdup:
+    content=procaddress(dictevent[ed])
+    content.append(dicteventphones[ed])
+    wrong87.writerow(content)
+
 for v in vs:
 #    print v
     content=procaddress(dict87w[v])
-    true87.writerow(content)
-
+    checkresult=checksize(content[2],content[16],content[8],content[11])
+    if checkresult == u"":
+        true87.writerow(content)
+    else:
+        content.append(checkresult)
+        wrong87.writerow(content)
+for ev in eventphone:
+    content=procaddress(dictevent[ev])
+    checkresult=checksize(content[2],content[16],content[8],content[11])
+    if checkresult == u"" and content[17] in ("NB","S","M","L"):
+        true87.writerow(content)
+    else:
+        content.append(checkresult)
+        wrong87.writerow(content)
+    evrow=(ev,content[2])
+    ehistory.writerow(evrow)
+wrong87w.close()
 true87w.close()
+ehistoryw.close()
 #misaddrw.close()
 

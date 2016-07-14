@@ -124,7 +124,8 @@ fuzzywords=(u'省',u'市',u'县',u'镇',u'工业区',u'业园区',u'工业园',u
 fixaddress={u"其它区":u"",u"市辖区":u"",u"墉桥区":u"埇桥区",u"璧山区":u"璧山县",u"高陵区":u"高陵县",u"富阳区":u"富阳市",
             u"藁城区":u"藁城市",u"溧水区":u"溧水县",u"南溪区":u"南溪县",u"鹿泉区":u"鹿泉市",u"大足区":u"大足县",
             u"毕节市":u"七星关区",u"铜仁市":u"铜仁地区",u"浑南新区":u"浑南区",u"东陵区":u"浑南区",u"赣榆区":u"赣榆县",
-            u"铜梁区":u"铜梁县",u"龙马潭":u"龙马潭区",u"上虞区":u"上虞市",u"广州省":u"广东省",u"广西省":u"",u"临河市":u"临河区"}
+            u"铜梁区":u"铜梁县",u"龙马潭":u"龙马潭区",u"上虞区":u"上虞市",u"广州省":u"广东省",u"广西省":u"",u"临河市":u"临河区",
+            u"娄底地区":u"娄底市",u"海东市":u"海东地区",u"菏泽地区":u"菏泽市",u"巴彦淖尔盟":u"巴彦淖尔市"}
 citys=[]
 dictcity={}
 PCA={} #prov,city,area
@@ -213,7 +214,8 @@ def getprovince(straddr):
     return result
 
 #查市信息
-def getcity(straddr):
+def getcity(straddrfilter):
+    straddr=filterotherarea(straddrfilter)
     if straddr == u"毕节市" or straddr == u"毕节":
         return u"毕节地区"
     elif straddr == u"铜仁市" or straddr == u"铜仁":
